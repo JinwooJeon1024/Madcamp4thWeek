@@ -1,0 +1,38 @@
+.bubble-container {
+  display: flex;
+  flex-direction: column; /* 세로 방향으로 나열 */
+  align-items: flex-start; /* 왼쪽 정렬 */
+}
+
+.bubble {
+  position: relative;
+  background: #f0f0f0;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px 0;
+  display: inline-block;
+}
+
+.bubble:after {
+  content: '';
+  position: absolute;
+  border-style: solid;
+  border-width: 10px 15px 10px 0;
+  border-color: transparent #f0f0f0;
+  display: block;
+  width: 0;
+  z-index: 1;
+  left: -15px;
+  top: 10px;
+}
+
+/* 추가 스타일링 */
+.transcript {
+  width: 100%;
+  height: 100px;
+  margin-bottom: 10px;
+}
+
+button {
+  margin-bottom: 10px;
+}
