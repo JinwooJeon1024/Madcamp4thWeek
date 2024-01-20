@@ -1,38 +1,107 @@
-.App {
-  text-align: center;
+
+
+.MainContainer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 600px;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.FileContainer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 200px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.FileList {
   display: flex;
   flex-direction: column;
+  width: 80%;
+  height: 100%;
+  border: 1px solid black;
+}
+
+.FileListTitle {
+  display: flex;
+  align-items: center;
+  height: 20%;
+  border-bottom: 1px solid black;
+  padding-left: 10px;
+}
+
+.FileListBody {
+  display: flex;
+  height: 80%;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.FileResultBody {
+  display: flex;
+  width: 100%;
+  height: 80%;
+  overflow: scroll;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.FileResultRow {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  justify-content: space-between;
+}
+
+.Input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+}
+
+.Label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 30px;
+  border: 1px solid gray;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.ModalOverlay {
+  box-sizing: border-box;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 999;
+}
+
+.DeleteButton {
+  margin-right: 10px;
+}
+
+.PdfContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.ButtonContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.CloseButton {
+  width: 50px;
 }

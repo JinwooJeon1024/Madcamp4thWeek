@@ -1,26 +1,40 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+// // src/App.tsx
+// import React from 'react';
+// import PdfViewer from './components/PDFViewer';
+// import NoteEditor from './components/NoteEditor';
+// import ExportButton from './components/ExportButton';
 
-function App() {
+// const App: React.FC = () => {
+//   const handleExport = () => {
+//     alert('Exporting to PDF...');
+//   };
+
+//   return (
+//     <div>
+//       <PdfViewer pdfUrl="your-pdf-url.pdf" />
+//       <NoteEditor />
+//       <ExportButton onClick={handleExport} />
+//     </div>
+//   );
+// };
+
+// export default App;
+
+import React from 'react';
+import UseSpeechToText from './components/UseSpeechtoText';
+
+const App: React.FC = () => {
+  const { transcript, listening, toggleListening } = UseSpeechToText();
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <h1>Web Speech API</h1>
+      <textarea className="transcript" value={transcript} onChange={() => {}} />
+      <button onClick={toggleListening}>
+        {listening ? '음성인식 중지' : '음성인식 시작'}
+      </button>
     </div>
   );
-}
+};
 
 export default App;
