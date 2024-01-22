@@ -6,14 +6,18 @@ interface SpeechToTextHook {
   toggleListening: () => void;
 }
 
-const useSpeechToText = (): SpeechToTextHook => {
+const useSpeechToText = (selectedOption: string): SpeechToTextHook => {
   const { transcript, listening } = useSpeechRecognition();
 
   const toggleListening = () => {
     if (listening) {
       SpeechRecognition.stopListening();
     } else {
-      SpeechRecognition.startListening({ language: 'ko-KR', continuous: true });
+      let language = 'en-US';
+      if(selectedOption === 'korean') {
+        language = 'ko-KR';
+      }
+      SpeechRecognition.startListening({ language, continuous: true });
     }
   };
 

@@ -3,20 +3,30 @@ import UseSpeechToText from './components/UseSpeechtoText';
 import './styles/Bubble.css';
 import Draggable from 'react-draggable';
 import PdfViewer from './components/PDFViewer';
+import { addNewlineForKorean, addNewlineForEnglish } from './utils/textUtils';
 
 const App: React.FC = () => {
-  const { transcript, listening, toggleListening } = UseSpeechToText();
   const [modifiedLines, setModifiedLines] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState<string>('');
   const [lastIndex, setLastIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState("korean"); // Default option is Korean
+  const { transcript, listening, toggleListening } = UseSpeechToText(selectedOption);
+
+  const addNewline = (input: string): string => {
+    if (selectedOption === 'korean') {
+      return addNewlineForKorean(input);
+    } else if (selectedOption === 'english') {
+      return addNewlineForEnglish(input);
+    }
+    return input; // Handle other cases as needed
+  };
 
   const modifyTranscript = () => {
-    const modified = addNewlineAtWordEnd(transcript);
+    const modified = addNewline(transcript);
     setModifiedLines(modified.split('\n'));
   };
-  
+
   const startEditing = (index: number, text: string) => {
     setEditingIndex(index);
     setEditingText(text);
@@ -37,15 +47,21 @@ const App: React.FC = () => {
   useEffect(() => {
     if (listening) {
       const newTranscript = transcript.slice(lastIndex);
-      const sentences = newTranscript.split(/(?<=니다|냐|요|죠)\s/);
+      let sentences: string[] = [];
+
+      if (selectedOption === 'english') {
+        sentences = newTranscript.split(/(?<=[.!?])\s+/);
+      } else {
+        sentences = newTranscript.split(/(?<=니다|냐|요|죠)\s/);
+      }
+
       if (sentences.length > 1) {
         setModifiedLines(prev => [...prev, ...sentences.slice(0, -1)]);
         setLastIndex(transcript.length - sentences[sentences.length - 1].length);
       }
     }
-  }, [transcript, listening]);
+  }, [transcript, listening, selectedOption]);
 
-  // Function to handle radio button selection
   const handleOptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedOption(e.target.value);
   };
@@ -111,20 +127,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-function addNewlineAtWordEnd(input: string): string {
-  const words = input.split(' ');
-  const resultArray: string[] = [];
-
-  for (const word of words) {
-    if (word.endsWith("니다") || word.endsWith("냐") || word.endsWith("요") || word.endsWith("죠")) {
-      const modifiedWord = word + '\n';
-      resultArray.push(modifiedWord);
-    } else {
-      resultArray.push(word);
-    }
-  }
-
-  const result = resultArray.join(' ');
-  return result;
-}
