@@ -13,7 +13,7 @@ const App: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState("korean"); // Default option is Korean
   const { transcript, listening, toggleListening } = UseSpeechToText(selectedOption);
 
-  const addNewline = (input: string): string => {
+  const addNewline = async (input: string): Promise<string> => {
     if (selectedOption === 'korean') {
       return addNewlineForKorean(input);
     } else if (selectedOption === 'english') {
@@ -22,9 +22,9 @@ const App: React.FC = () => {
     return input; // Handle other cases as needed
   };
 
-  const modifyTranscript = () => {
+  const modifyTranscript = async () => {
     const modified = addNewline(transcript);
-    setModifiedLines(modified.split('\n'));
+    setModifiedLines((await modified).split('\n'));
   };
 
   const startEditing = (index: number, text: string) => {
