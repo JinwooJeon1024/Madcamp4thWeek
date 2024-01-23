@@ -24,7 +24,7 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [elements, setElements] = useState<Element[]>([]);
+  const [pageElements, setPageElements] = useState<{ [pageNum: number]: Element[] }>({});
   const [drawing, setDrawing] = useState<boolean>(false);
   const [elementType, setElementType] = useState<string>('line');
   const [pdfImages, setPdfImages] = useState<string[]>([]);
@@ -32,7 +32,7 @@ const PdfViewerWithDrawing: React.FC = () => {
 
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  
+
 
   useEffect(() => {
     if (pdfFile) {
@@ -40,42 +40,43 @@ const PdfViewerWithDrawing: React.FC = () => {
     }
   }, [pdfFile]);
 
-// Add a new function for drawing on the canvas
-const drawOnCanvas = (canvas: HTMLCanvasElement, img: HTMLImageElement, roughCanvas: any, elements: Element[]) => {
-  const context = canvas.getContext('2d');
+  // Add a new function for drawing on the canvas
+  const drawOnCanvas = (canvas: HTMLCanvasElement, img: HTMLImageElement, roughCanvas: any, elements: Element[]) => {
+    const context = canvas.getContext('2d');
 
-  if (context) {
-    try {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      canvas.width = img.width;
-      canvas.height = img.height;
-      context.drawImage(img, 0, 0);
+    if (context) {
+      try {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        context.drawImage(img, 0, 0);
 
-      if (roughCanvas) {
-        const roughCanvasInstance = rough.canvas(canvas);
-        elements.forEach(({ roughElement }) => roughCanvasInstance.draw(roughElement));
-      } else {
-        console.error('RoughJS canvas for the current page is not available.');
+        if (roughCanvas) {
+          const roughCanvasInstance = rough.canvas(canvas);
+          elements.forEach(({ roughElement }) => roughCanvasInstance.draw(roughElement));
+        } else {
+          console.error('RoughJS canvas for the current page is not available.');
+        }
+      } catch (error) {
+        console.error('Error rendering image on the canvas:', error);
       }
-    } catch (error) {
-      console.error('Error rendering image on the canvas:', error);
     }
-  }
-};
+  };
 
-// Modify your useEffect to use the new function
-useEffect(() => {
-  const imageCanvas = imageCanvasRef.current;
+  // Modify your useEffect to use the new function
+  useEffect(() => {
+    const imageCanvas = imageCanvasRef.current;
+    const currentElements = pageElements[pageNumber] || [];
 
-  if (imageCanvas) {
-    const img = new Image();
-    img.src = pdfImages[pageNumber - 1];
-    img.onload = () => {
-      const roughCanvas = roughCanvases[pageNumber - 1];
-      drawOnCanvas(imageCanvas, img, roughCanvas, elements);
-    };
-  }
-}, [pageNumber, pdfImages, elements, roughCanvases]);
+    if (imageCanvas) {
+      const img = new Image();
+      img.src = pdfImages[pageNumber - 1];
+      img.onload = () => {
+        const roughCanvas = roughCanvases[pageNumber - 1];
+        drawOnCanvas(imageCanvas, img, roughCanvas, currentElements);
+      };
+    }
+  }, [pageNumber, pdfImages, pageElements, roughCanvases]);
 
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,33 +161,44 @@ useEffect(() => {
     setDrawing(true);
     const { clientX, clientY } = event.nativeEvent;
     const rect = imageCanvasRef.current?.getBoundingClientRect();
-    if (rect) {
+    if (rect && imageCanvasRef.current) {
       const x = clientX - rect.left;
       const y = clientY - rect.top;
       const element = createElement(x, y, x, y, elementType);
-      setElements((prevState) => [...prevState, element]);
+
+      setPageElements(prevPageElements => {
+        const currentPageElements = prevPageElements[pageNumber] || [];
+        return { ...prevPageElements, [pageNumber]: [...currentPageElements, element] };
+      });
     }
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (drawing) {
-      const { clientX, clientY } = event.nativeEvent;
-      const rect = imageCanvasRef.current?.getBoundingClientRect();
-  
-      if (rect) {
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        const index = elements.length - 1;
-        const { x1, y1 } = elements[index];
-        const updatedElement = createElement(x1, y1, x, y, elementType);
-  
-        const elementsCopy = [...elements];
-        elementsCopy[index] = updatedElement;
-        setElements(elementsCopy);
-      }
+    if (!drawing) return;
+    const { clientX, clientY } = event.nativeEvent;
+    const rect = imageCanvasRef.current?.getBoundingClientRect();
+
+    if (rect && imageCanvasRef.current) {
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      setPageElements(prevPageElements => {
+        // 현재 페이지의 요소들을 복사
+        const currentPageElements = [...(prevPageElements[pageNumber] || [])];
+        if (currentPageElements.length === 0) return prevPageElements;
+
+        // 마지막 요소를 업데이트
+        const lastIndex = currentPageElements.length - 1;
+        const lastElement = currentPageElements[lastIndex];
+        const updatedElement = createElement(lastElement.x1, lastElement.y1, x, y, elementType);
+        currentPageElements[lastIndex] = updatedElement;
+
+        // 업데이트된 요소 배열로 상태를 설정
+        return { ...prevPageElements, [pageNumber]: currentPageElements };
+      });
     }
   };
-
+  
   const handleMouseUp = () => {
     setDrawing(false);
   };
