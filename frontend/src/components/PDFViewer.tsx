@@ -191,16 +191,6 @@ const PdfViewerWithDrawing: React.FC = () => {
     setPageNumber((prevPageNumber) => (numPages ? Math.min(prevPageNumber + 1, numPages) : prevPageNumber));
   };
 
-  const updatedElement = (pageNum: number, id: number, x1: number, y1: number, x2: number, y2: number, type: string) => {
-    const updatedElement = createElement(id, x1, y1, x2, y2, type);
-
-    setPageElements(prevPageElements => {
-      const elementsCopy = [...(prevPageElements[pageNum] || [])];
-      elementsCopy[id] = updatedElement;
-      return { ...prevPageElements, [pageNum]: elementsCopy };
-    })
-  }
-
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const { clientX, clientY } = event.nativeEvent;
     const rect = imageCanvasRef.current?.getBoundingClientRect();
@@ -209,10 +199,9 @@ const PdfViewerWithDrawing: React.FC = () => {
     if (rect) {
       const x = clientX - rect.left;
       const y = clientY - rect.top;
+      const element = getElementAtPosition(x, y, currentPageElements);
 
       if (tool === 'selection') {
-        const element = getElementAtPosition(x, y, currentPageElements);
-
         if (element) {
           const offsetX = x - element.x1;
           const offsetY = y - element.y1;
@@ -222,7 +211,22 @@ const PdfViewerWithDrawing: React.FC = () => {
           setAction('none');
           setSelectedElement(null);
         }
-      } else {
+      } else if (tool === 'delete') {
+        if (element) {
+          const offsetX = x - element.x1;
+          const offsetY = y - element.y1;
+          setSelectedElement({ ...element, offsetX, offsetY });
+          setPageElements(prevPageElements => {
+            const updatedPageElements = { ...prevPageElements };
+            updatedPageElements[pageNumber] = currentPageElements.filter(el => el.id !== element.id);
+            return updatedPageElements;
+          })
+        } else {
+          setAction('none');
+          setSelectedElement(null);
+        }
+      }
+      else {
         const id = currentPageElements.length;
         const element = createElement(id, x, y, x, y, tool);
         setPageElements(prevPageElements => {
@@ -246,6 +250,11 @@ const PdfViewerWithDrawing: React.FC = () => {
       if (tool === 'selection' && action !== "drawing") {
         const canvas = event.target as HTMLCanvasElement;
         canvas.style.cursor = getElementAtPosition(x, y, currentPageElements) ? 'move' : 'default';
+      } else if (tool === 'delete') {
+        const canvas = event.target as HTMLCanvasElement;
+        canvas.style.cursor = getElementAtPosition(x, y, currentPageElements)
+          ? 'pointer'
+          : 'default';
       }
 
       if (action === "drawing") {
@@ -305,6 +314,13 @@ const PdfViewerWithDrawing: React.FC = () => {
           onChange={() => setTool('rectangle')}
         />
         <label htmlFor="rectangle">Rectangle</label>
+        <input
+          type="radio"
+          id="delete"
+          checked={tool === 'delete'}
+          onChange={() => setTool('delete')}
+        />
+        <label htmlFor="delete">Delete</label>
       </div>
 
       <canvas
