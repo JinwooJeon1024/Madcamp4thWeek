@@ -20,7 +20,7 @@ interface SelectedElement extends Element {
   offsetY: number;
 }
 
-function createElement(id:number, x1: number, y1: number, x2: number, y2: number, type: string): Element {
+function createElement(id: number, x1: number, y1: number, x2: number, y2: number, type: string): Element {
   const generator = rough.generator();
   const roughElement =
     type === 'line' ? generator.line(x1, y1, x2, y2) : generator.rectangle(x1, y1, x2 - x1, y2 - y1);
@@ -28,16 +28,16 @@ function createElement(id:number, x1: number, y1: number, x2: number, y2: number
 }
 
 const isWithinElement = (x: number, y: number, element: Element) => {
-  const {type, x1, x2, y1, y2} = element;
-  if(type === "rectangle" ) {
+  const { type, x1, x2, y1, y2 } = element;
+  if (type === "rectangle") {
     const minX = Math.min(x1, x2);
     const maxX = Math.max(x1, x2);
     const minY = Math.min(y1, y2);
     const maxY = Math.max(y1, y2);
     return x >= minX && x <= maxX && y >= minY && y <= maxY;
   } else {
-    const a = { x: x1, y: y1};
-    const b = { x: x2, y: y2};
+    const a = { x: x1, y: y1 };
+    const b = { x: x2, y: y2 };
     const c = { x, y };
     const offset = distance(a, b) - (distance(a, c) + distance(b, c));
     return Math.abs(offset) < 1;
@@ -55,7 +55,7 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [elements, setElements] = useState<Element[]>([]);
+  const [pageElements, setPageElements] = useState<{ [pageNum: number]: Element[] }>({});
   const [action, setAction] = useState<string>("none");
   const [tool, setTool] = useState<string>("line")
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
@@ -64,7 +64,7 @@ const PdfViewerWithDrawing: React.FC = () => {
 
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  
+
 
   useEffect(() => {
     if (pdfFile) {
@@ -72,45 +72,46 @@ const PdfViewerWithDrawing: React.FC = () => {
     }
   }, [pdfFile]);
 
-// Add a new function for drawing on the canvas
-const drawOnCanvas = (canvas: HTMLCanvasElement, img: HTMLImageElement, roughCanvas: any, elements: Element[]) => {
-  const context = canvas.getContext('2d');
+  // Add a new function for drawing on the canvas
+  const drawOnCanvas = (canvas: HTMLCanvasElement, img: HTMLImageElement, roughCanvas: any, elements: Element[]) => {
+    const context = canvas.getContext('2d');
 
-  if (context) {
-    try {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      canvas.width = img.width;
-      canvas.height = img.height;
-      context.drawImage(img, 0, 0);
+    if (context) {
+      try {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        context.drawImage(img, 0, 0);
 
-      const roughCanvasInstance = rough.canvas(canvas);
+        const roughCanvasInstance = rough.canvas(canvas);
 
-      if (roughCanvas) {
-        elements.forEach(({ roughElement }) => {
-          roughCanvasInstance.draw(roughElement);
-        });
-      } else {
-        console.error('RoughJS canvas for the current page is not available.');
+        if (roughCanvas) {
+          elements.forEach(({ roughElement }) => {
+            roughCanvasInstance.draw(roughElement);
+          });
+        } else {
+          console.error('RoughJS canvas for the current page is not available.');
+        }
+      } catch (error) {
+        console.error('Error rendering image on the canvas:', error);
       }
-    } catch (error) {
-      console.error('Error rendering image on the canvas:', error);
     }
-  }
-};
+  };
 
-// Modify your useEffect to use the new function
-useEffect(() => {
-  const imageCanvas = imageCanvasRef.current;
+  // Modify your useEffect to use the new function
+  useEffect(() => {
+    const imageCanvas = imageCanvasRef.current;
 
-  if (imageCanvas) {
-    const img = new Image();
-    img.src = pdfImages[pageNumber - 1];
-    img.onload = () => {
-      const roughCanvas = roughCanvases[pageNumber - 1];
-      drawOnCanvas(imageCanvas, img, roughCanvas, elements);
-    };
-  }
-}, [pageNumber, pdfImages, elements, roughCanvases]);
+    if (imageCanvas) {
+      const img = new Image();
+      img.src = pdfImages[pageNumber - 1];
+      img.onload = () => {
+        const roughCanvas = roughCanvases[pageNumber - 1];
+        const currentPageElements = pageElements[pageNumber] || [];
+        drawOnCanvas(imageCanvas, img, roughCanvas, currentPageElements);
+      };
+    }
+  }, [pageNumber, pdfImages, pageElements, roughCanvases]);
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -190,39 +191,45 @@ useEffect(() => {
     setPageNumber((prevPageNumber) => (numPages ? Math.min(prevPageNumber + 1, numPages) : prevPageNumber));
   };
 
-  const updatedElement = (id: number, x1: number, y1: number, x2: number, y2: number, type: string) => {
+  const updatedElement = (pageNum: number, id: number, x1: number, y1: number, x2: number, y2: number, type: string) => {
     const updatedElement = createElement(id, x1, y1, x2, y2, type);
 
-    const elementsCopy = [...elements]
-    elementsCopy[id] = updatedElement;
-    setElements(elementsCopy);
+    setPageElements(prevPageElements => {
+      const elementsCopy = [...(prevPageElements[pageNum] || [])];
+      elementsCopy[id] = updatedElement;
+      return { ...prevPageElements, [pageNum]: elementsCopy };
+    })
   }
 
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const { clientX, clientY } = event.nativeEvent;
     const rect = imageCanvasRef.current?.getBoundingClientRect();
+    const currentPageElements = pageElements[pageNumber] || [];
+
     if (rect) {
       const x = clientX - rect.left;
       const y = clientY - rect.top;
 
       if (tool === 'selection') {
-      const element = getElementAtPosition(x, y, elements);
-  
-      if (element) {
-        const offsetX = x - element.x1;
-        const offsetY = y - element.y1;
-        setSelectedElement({ ...element, offsetX, offsetY });
-        setAction('moving');
+        const element = getElementAtPosition(x, y, currentPageElements);
+
+        if (element) {
+          const offsetX = x - element.x1;
+          const offsetY = y - element.y1;
+          setSelectedElement({ ...element, offsetX, offsetY });
+          setAction('moving');
+        } else {
+          setAction('none');
+          setSelectedElement(null);
+        }
       } else {
-        setAction('none');
-        setSelectedElement(null);
+        const id = currentPageElements.length;
+        const element = createElement(id, x, y, x, y, tool);
+        setPageElements(prevPageElements => {
+          return { ...prevPageElements, [pageNumber]: [...currentPageElements, element] }
+        })
+        setAction("drawing");
       }
-    } else {       
-      const id = elements.length;
-      const element = createElement(id, x, y, x, y, tool);
-      setElements((prevState) => [...prevState, element]);
-      setAction("drawing");
-    }
     }
 
   };
@@ -230,45 +237,43 @@ useEffect(() => {
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const { clientX, clientY } = event.nativeEvent;
     const rect = imageCanvasRef.current?.getBoundingClientRect();
+    const currentPageElements = pageElements[pageNumber] || [];
+
     if (rect) {
       const x = clientX - rect.left;
       const y = clientY - rect.top;
-      if (tool === 'selection') {
+
+      if (tool === 'selection' && action !== "drawing") {
         const canvas = event.target as HTMLCanvasElement;
-        canvas.style.cursor = getElementAtPosition(x, y, elements)
-          ? 'move'
-          : 'default';
+        canvas.style.cursor = getElementAtPosition(x, y, currentPageElements) ? 'move' : 'default';
       }
 
       if (action === "drawing") {
-        
-        const index = elements.length - 1;
-        const {x1, y1} = elements[index];
+        const index = currentPageElements.length - 1;
+        const { x1, y1 } = currentPageElements[index];
+        const newElement = createElement(index, x1, y1, x, y, tool);
 
-        updatedElement(index, x1, y1, clientX, clientY, tool);
-        
-        
-    
-        if (rect) {
-
-          const index = elements.length - 1;
-          const { x1, y1 } = elements[index];
-          const updatedElement = createElement(index, x1, y1, x, y, tool);
-    
-          const elementsCopy = [...elements];
-          elementsCopy[index] = updatedElement;
-          setElements(elementsCopy);
-        }
+        setPageElements(prevPageElements => {
+          const updatedPageElements = [...(prevPageElements[pageNumber] || [])];
+          updatedPageElements[index] = newElement;
+          return { ...prevPageElements, [pageNumber]: updatedPageElements };
+        });
       } else if (action === "moving" && selectedElement) {
-          const {id, x1, x2, y1, y2, type, offsetX, offsetY} = selectedElement;
-          const width = x2 - x1;
-          const height = y2 - y1;
-          const newX1 = x - offsetX;
-          const newY1 = y - offsetY;
-          updatedElement(id, newX1, newY1, newX1 + width, newY1 + height, type);
+        const { id, x1, y1, type, offsetX, offsetY } = selectedElement;
+        const width = selectedElement.x2 - x1;
+        const height = selectedElement.y2 - y1;
+        const newX1 = x - offsetX;
+        const newY1 = y - offsetY;
+
+        setPageElements(prevPageElements => {
+          const updatedPageElements = [...(prevPageElements[pageNumber] || [])];
+          updatedPageElements[id] = createElement(id, newX1, newY1, newX1 + width, newY1 + height, type);
+          return { ...prevPageElements, [pageNumber]: updatedPageElements };
+        });
       }
     }
   };
+
 
   const handleMouseUp = () => {
     setAction("none");
