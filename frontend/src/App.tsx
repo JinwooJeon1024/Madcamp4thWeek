@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import UseSpeechToText from './components/UseSpeechtoText';
 import './styles/Bubble.css';
 import Draggable from 'react-draggable';
 import PdfViewer from './components/PDFViewer';
+
+
 
 const App: React.FC = () => {
   const { transcript, listening, toggleListening } = UseSpeechToText();
@@ -10,6 +12,7 @@ const App: React.FC = () => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState<string>('');
 
+  
   const modifyTranscript = () => {
     const modified = addNewlineAtWordEnd(transcript);
     setModifiedLines(modified.split('\n'));
@@ -31,7 +34,7 @@ const App: React.FC = () => {
     setEditingText(e.target.value);
   };
 
-
+  
   return (
     <div>
       <h1>Web Speech API</h1>
@@ -58,7 +61,7 @@ const App: React.FC = () => {
           </Draggable>
         ))}
       </div>
-      <PdfViewer></PdfViewer>
+      <PdfViewer />
     </div>
   );
 };
