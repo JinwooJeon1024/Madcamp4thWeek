@@ -206,22 +206,36 @@ useEffect(() => {
       const y = clientY - rect.top;
 
       if (tool === 'selection') {
-      const element = getElementAtPosition(x, y, elements);
-  
-      if (element) {
-        const offsetX = x - element.x1;
-        const offsetY = y - element.y1;
-        setSelectedElement({ ...element, offsetX, offsetY });
-        setAction('moving');
-      } else {
-        setAction('none');
-        setSelectedElement(null);
+        const element = getElementAtPosition(x, y, elements);
+    
+        if (element) {
+          const offsetX = x - element.x1;
+          const offsetY = y - element.y1;
+          setSelectedElement({ ...element, offsetX, offsetY });
+          setAction('moving');
+        } else {
+          setAction('none');
+          setSelectedElement(null);
+        }
+      } 
+      else if (tool === 'delete') {
+        const element = getElementAtPosition(x, y, elements);
+        if (element) {
+          const offsetX = x - element.x1;
+          const offsetY = y - element.y1;
+          setSelectedElement({ ...element, offsetX, offsetY });
+          const updatedElements = elements.filter((el) => el.id !== element.id);
+          setElements(updatedElements);
+        } else {
+          setAction('none');
+          setSelectedElement(null);
+        }
       }
-    } else {       
-      const id = elements.length;
-      const element = createElement(id, x, y, x, y, tool);
-      setElements((prevState) => [...prevState, element]);
-      setAction("drawing");
+      else {       
+        const id = elements.length;
+        const element = createElement(id, x, y, x, y, tool);
+        setElements((prevState) => [...prevState, element]);
+        setAction("drawing");
     }
     }
 
@@ -237,6 +251,12 @@ useEffect(() => {
         const canvas = event.target as HTMLCanvasElement;
         canvas.style.cursor = getElementAtPosition(x, y, elements)
           ? 'move'
+          : 'default';
+      }
+      if (tool === 'delete') {
+        const canvas = event.target as HTMLCanvasElement;
+        canvas.style.cursor = getElementAtPosition(x, y, elements)
+          ? 'pointer'
           : 'default';
       }
 
@@ -300,6 +320,13 @@ useEffect(() => {
           onChange={() => setTool('rectangle')}
         />
         <label htmlFor="rectangle">Rectangle</label>
+        <input
+          type="radio"
+          id="delete"
+          checked={tool === 'delete'}
+          onChange={() => setTool('delete')}
+        />
+        <label htmlFor="delete">Delete</label>
       </div>
 
       <canvas
