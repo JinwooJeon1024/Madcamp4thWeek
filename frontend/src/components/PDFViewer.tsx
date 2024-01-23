@@ -32,44 +32,51 @@ const PdfViewerWithDrawing: React.FC = () => {
 
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  
+
   useEffect(() => {
     if (pdfFile) {
       loadPdf(pdfFile);
     }
   }, [pdfFile]);
 
-  useEffect(() => {
-    const imageCanvas = imageCanvasRef.current;
-    if (imageCanvas) {
-      const context = imageCanvas.getContext('2d');
+// Add a new function for drawing on the canvas
+const drawOnCanvas = (canvas: HTMLCanvasElement, img: HTMLImageElement, roughCanvas: any, elements: Element[]) => {
+  const context = canvas.getContext('2d');
 
-      if (context) {
-        try {
-          context.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-          const img = new Image();
-          img.src = pdfImages[pageNumber - 1];
-          img.onload = () => {
-            imageCanvas.width = img.width;
-            imageCanvas.height = img.height;
-            context.drawImage(img, 0, 0);
+  if (context) {
+    try {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.width = img.width;
+      canvas.height = img.height;
+      context.drawImage(img, 0, 0);
 
-
-            const roughCanvas = roughCanvases[pageNumber - 1];
-            if (roughCanvas) {
-              console.log('roughcanvas')
-              const roughCanvas = rough.canvas(imageCanvas);
-              elements.forEach(({ roughElement }) => roughCanvas.draw(roughElement));
-
-            } else {
-              console.error('RoughJS canvas for the current page is not available.');
-            }
-          };
-        } catch (error) {
-          console.error('Error rendering image on the canvas:', error);
-        }
+      if (roughCanvas) {
+        const roughCanvasInstance = rough.canvas(canvas);
+        elements.forEach(({ roughElement }) => roughCanvasInstance.draw(roughElement));
+      } else {
+        console.error('RoughJS canvas for the current page is not available.');
       }
+    } catch (error) {
+      console.error('Error rendering image on the canvas:', error);
     }
-  }, [pageNumber, pdfImages, elements, roughCanvases]);
+  }
+};
+
+// Modify your useEffect to use the new function
+useEffect(() => {
+  const imageCanvas = imageCanvasRef.current;
+
+  if (imageCanvas) {
+    const img = new Image();
+    img.src = pdfImages[pageNumber - 1];
+    img.onload = () => {
+      const roughCanvas = roughCanvases[pageNumber - 1];
+      drawOnCanvas(imageCanvas, img, roughCanvas, elements);
+    };
+  }
+}, [pageNumber, pdfImages, elements, roughCanvases]);
+
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -162,19 +169,21 @@ const PdfViewerWithDrawing: React.FC = () => {
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawing) return;
-    const { clientX, clientY } = event.nativeEvent;
-    const rect = imageCanvasRef.current?.getBoundingClientRect();
-    if (rect) {
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      const index = elements.length - 1;
-      const { x1, y1 } = elements[index];
-      const updatedElement = createElement(x1, y1, x, y, elementType);
-
-      const elementsCopy = [...elements];
-      elementsCopy[index] = updatedElement;
-      setElements(elementsCopy);
+    if (drawing) {
+      const { clientX, clientY } = event.nativeEvent;
+      const rect = imageCanvasRef.current?.getBoundingClientRect();
+  
+      if (rect) {
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const index = elements.length - 1;
+        const { x1, y1 } = elements[index];
+        const updatedElement = createElement(x1, y1, x, y, elementType);
+  
+        const elementsCopy = [...elements];
+        elementsCopy[index] = updatedElement;
+        setElements(elementsCopy);
+      }
     }
   };
 
