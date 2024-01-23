@@ -3,7 +3,7 @@ import UseSpeechToText from './components/UseSpeechtoText';
 import './styles/Bubble.css';
 import Draggable from 'react-draggable';
 import PdfViewer from './components/PDFViewer';
-import { addNewlineForKorean, addNewlineForEnglish } from './utils/textUtils';
+import { addNewlineForEnglish, addNewlineForKorean, translateText } from './utils/textUtils';
 
 const App: React.FC = () => {
   const [modifiedLines, setModifiedLines] = useState<string[]>([]);
@@ -50,7 +50,7 @@ const App: React.FC = () => {
       let sentences: string[] = [];
 
       if (selectedOption === 'english') {
-        sentences = newTranscript.split(/(?<=[.!?])\s+/);
+        sentences = newTranscript.split(/(?<=[ ])\s+/);
       } else {
         sentences = newTranscript.split(/(?<=니다|냐|요|죠)\s/);
       }
@@ -65,6 +65,13 @@ const App: React.FC = () => {
   const handleOptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedOption(e.target.value);
   };
+
+  const handleTranslateClick = async (index: number) => {
+    const lineToTranslate = modifiedLines[index];
+    const translatedLine = await translateText(lineToTranslate);
+    const updatedLines = modifiedLines.map((line, idx) => idx === index ? translatedLine : line);
+    setModifiedLines(updatedLines);
+  }
 
   return (
     <div>
@@ -88,15 +95,6 @@ const App: React.FC = () => {
           />
           한국어
         </label>
-        <label>
-          <input
-            type="radio"
-            value="translation"
-            checked={selectedOption === "translation"}
-            onChange={handleOptionChange}
-          />
-          English to Korean
-        </label>
       </div>
       <textarea className="transcript" value={transcript} onChange={() => { }} />
       <button onClick={() => { toggleListening(); modifyTranscript(); }}>
@@ -117,6 +115,7 @@ const App: React.FC = () => {
               ) : (
                 <span>{line}</span>
               )}
+              <button onClick={() => handleTranslateClick(index)}>번역</button>
             </div>
           </Draggable>
         ))}
