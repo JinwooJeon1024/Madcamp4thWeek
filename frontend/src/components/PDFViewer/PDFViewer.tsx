@@ -418,6 +418,7 @@ const PdfViewerWithDrawing: React.FC = () => {
       if (numPages) {
         for (let i = 1; i <= numPages; i++) {
           const currentPageElements = pageElements[i] || [];
+          const currentPageTextElements = textElements[i] || [];
 
           // Create a new canvas for the current page
           const combinedCanvas = document.createElement('canvas');
@@ -455,6 +456,9 @@ const PdfViewerWithDrawing: React.FC = () => {
                   combinedContext.drawImage(canvas, x1, y1);
                 });
               }
+            });
+            currentPageTextElements.forEach(({ x, y, text }) => {
+              combinedContext.fillText(text, x, y);
             });
 
             // Convert the combined canvas to an image
