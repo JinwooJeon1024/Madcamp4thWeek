@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 import rough from 'roughjs';
 import UseSpeechToText from '../UseSpeechtoText';
-import { useDrop, DropTargetMonitor } from 'react-dnd';
-
 
 const pdfjs = require('pdfjs-dist');
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+
+let elementId = 0;
 
 interface Element {
   id: number;
@@ -90,7 +90,6 @@ const getElementAtPosition = (x: number, y: number, elements: Element[]) => {
 
 const PdfViewerWithDrawing: React.FC = () => {
   const { transcript, listening, toggleListening } = UseSpeechToText();
-  const [output, setOutput] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [numPages, setNumPages] = useState<number | null>(null);
@@ -101,36 +100,7 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [pdfImages, setPdfImages] = useState<string[]>([]);
   const [roughCanvases, setRoughCanvases] = useState<any[]>([]); // Array to hold RoughJS canvases for each page
   const [modifiedLines, setModifiedLines] = useState<string[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingText, setEditingText] = useState<string>('');
   const [textElements, setTextElements] = useState<{ [pageNum: number]: { x: number, y: number, text: string }[] }>({});
-
-  useEffect(() => {
-    setOutput(transcript);
-  }, [transcript])
-
-  const [, dropRef] = useDrop({
-    accept: ItemType.TEXT,
-    drop: (item: DragItem, monitor: DropTargetMonitor) => {
-      const clientOffset = monitor.getClientOffset();
-      if (clientOffset && imageCanvasRef.current) {
-        const { left, top } = imageCanvasRef.current.getBoundingClientRect();
-        const x = clientOffset.x - left;
-        const y = clientOffset.y - top;
-        addTextElement(item.text, x, y);
-      }
-    },
-  });
-
-  const addTextElement = (text: string, x: number, y: number) => {
-    const id = Object.keys(pageElements).length;
-    const newTextElement: TextElement = createElement(id, x, y, x + 100, y + 20, 'text', text) as TextElement;
-    setPageElements((prev) => ({
-      ...prev,
-      [pageNumber]: [...(prev[pageNumber] || []), newTextElement],
-    }));
-  };
-
 
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -285,7 +255,7 @@ const PdfViewerWithDrawing: React.FC = () => {
           const offsetX = x - textElement.x;
           const offsetY = y - textElement.y;
           setSelectedElement({
-            id: -1, // TODO: change to uid
+            id: elementId++,
             x1: textElement.x, y1: textElement.y,
             x2: textElement.x + 100, y2: textElement.y + 20,
             type: 'text',
@@ -322,7 +292,7 @@ const PdfViewerWithDrawing: React.FC = () => {
         }
       }
       else {
-        const id = currentPageElements.length;
+        const id = elementId++;
         const element = createElement(id, x, y, x, y, tool);
         setPageElements(prevPageElements => {
           return { ...prevPageElements, [pageNumber]: [...currentPageElements, element] }
@@ -485,7 +455,7 @@ const PdfViewerWithDrawing: React.FC = () => {
           {listening ? '음성인식 중지' : '음성인식 시작'}
         </button>
       </div>
-      <div ref={dropRef}>
+      <div>
         <canvas
           ref={imageCanvasRef}
           className="image-canvas"
