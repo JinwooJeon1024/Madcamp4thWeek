@@ -75,9 +75,11 @@ const isWithinElement = (x: number, y: number, element: Element) => {
   }
 };
 
-const isWithinTextElement = (x: number, y: number, textElement: { x: number, y: number, text: string }) => {
-  // 텍스트 엘리먼트 내부에 있는지 확인하는 로직
-  return x >= textElement.x && x <= textElement.x + 100 && y >= textElement.y && y <= textElement.y + 20;
+const isWithinTextElement = (x: number, y: number, textElement: { x: number, y: number, text: string }, context: CanvasRenderingContext2D) => {
+  context.font = '16px Arial'; // drawOnCanvas에서 사용된 글꼴 스타일과 일치시키기
+  const textWidth = context.measureText(textElement.text).width;
+  const textHeight = 20; // 텍스트 높이, 필요에 따라 조정
+  return x >= textElement.x && x <= textElement.x + textWidth && y >= textElement.y - textHeight && y <= textElement.y;
 };
 
 const distance = (a: any, b: any) => Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2))
@@ -153,6 +155,7 @@ const PdfViewerWithDrawing: React.FC = () => {
           console.error('RoughJS canvas for the current page is not available.');
         }
 
+        context.font = '16px Arial';
         textElements.forEach(textElement => {
           context.fillText(textElement.text, textElement.x, textElement.y);
         });
@@ -258,12 +261,13 @@ const PdfViewerWithDrawing: React.FC = () => {
     const rect = imageCanvasRef.current?.getBoundingClientRect();
     const currentPageElements = pageElements[pageNumber] || [];
     const currentPageTextElements = textElements[pageNumber] || [];
+    const context = imageCanvasRef.current?.getContext('2d');
 
-    if (rect) {
+    if (rect && context) {
       const x = clientX - rect.left;
       const y = clientY - rect.top;
       const element = getElementAtPosition(x, y, currentPageElements)
-      const textElement = currentPageTextElements.find(te => isWithinTextElement(x, y, te));
+      const textElement = currentPageTextElements.find(te => isWithinTextElement(x, y, te, context));
 
       if (tool === 'selection') {
         if (element) {
