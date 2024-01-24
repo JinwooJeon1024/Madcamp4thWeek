@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 import rough from 'roughjs';
-import Draggable from 'react-draggable';
 import UseSpeechToText from '../UseSpeechtoText';
 import { useDrop, DropTargetMonitor } from 'react-dnd';
 
-
 const pdfjs = require('pdfjs-dist');
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+
+let elementId = 0;
 
 interface Element {
   id: number;
@@ -45,7 +45,8 @@ const ItemType = {
   TEXT: 'text',
 };
 
-function createElement(id: number, x1: number, y1: number, x2: number, y2: number, type: string, text?: string): Element | TextElement {
+function createElement( x1: number, y1: number, x2: number, y2: number, type: string, text?: string): Element | TextElement {
+  const id = elementId++;
   if (type === 'text' && text !== undefined) {
     // TextElement 객체를 반환
     return { id, x1, y1, x2, y2, type, text };
@@ -91,6 +92,7 @@ const getElementAtPosition = (x: number, y: number, elements: Element[]) => {
 
 const PdfViewerWithDrawing: React.FC = () => {
   const { transcript, listening, toggleListening } = UseSpeechToText();
+  const [output, setOutput] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [numPages, setNumPages] = useState<number | null>(null);
@@ -104,6 +106,11 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState<string>('');
   const [textElements, setTextElements] = useState<{ [pageNum: number]: { x: number, y: number, text: string }[] }>({});
+
+  useEffect(() => {
+    setOutput(transcript);
+  }, [transcript])
+
   const [, dropRef] = useDrop({
     accept: ItemType.TEXT,
     drop: (item: DragItem, monitor: DropTargetMonitor) => {
@@ -118,8 +125,9 @@ const PdfViewerWithDrawing: React.FC = () => {
   });
 
   const addTextElement = (text: string, x: number, y: number) => {
-    const id = Object.keys(pageElements).length;
-    const newTextElement: TextElement = createElement(id, x, y, x + 100, y + 20, 'text', text) as TextElement;
+    const id = elementId++;
+  const newTextElement = { id, x1: x, y1: y, x2: x + 100, y2: y + 20, type: 'text', text } as TextElement;
+
     setPageElements((prev) => ({
       ...prev,
       [pageNumber]: [...(prev[pageNumber] || []), newTextElement],
@@ -268,6 +276,7 @@ const PdfViewerWithDrawing: React.FC = () => {
       const y = clientY - rect.top;
       const element = getElementAtPosition(x, y, currentPageElements)
       const textElement = currentPageTextElements.find(te => isWithinTextElement(x, y, te, context));
+      const textElementId = currentPageTextElements.findIndex(te => te === textElement);
 
       if (tool === 'selection') {
         if (element) {
@@ -280,7 +289,7 @@ const PdfViewerWithDrawing: React.FC = () => {
           const offsetX = x - textElement.x;
           const offsetY = y - textElement.y;
           setSelectedElement({
-            id: -1, // TODO: change to uid
+            id: textElementId,
             x1: textElement.x, y1: textElement.y,
             x2: textElement.x + 100, y2: textElement.y + 20,
             type: 'text',
@@ -317,8 +326,7 @@ const PdfViewerWithDrawing: React.FC = () => {
         }
       }
       else {
-        const id = currentPageElements.length;
-        const element = createElement(id, x, y, x, y, tool);
+        const element = createElement(x, y, x, y, tool);
         setPageElements(prevPageElements => {
           return { ...prevPageElements, [pageNumber]: [...currentPageElements, element] }
         })
@@ -351,7 +359,7 @@ const PdfViewerWithDrawing: React.FC = () => {
       if (action === "drawing") {
         const index = currentPageElements.length - 1;
         const { x1, y1 } = currentPageElements[index];
-        const newElement = createElement(index, x1, y1, x, y, tool);
+        const newElement = createElement(x1, y1, x, y, tool);
 
         setPageElements(prevPageElements => {
           const updatedPageElements = [...(prevPageElements[pageNumber] || [])];
@@ -376,7 +384,7 @@ const PdfViewerWithDrawing: React.FC = () => {
 
           setPageElements(prevPageElements => {
             const updatedPageElements = [...(prevPageElements[pageNumber] || [])];
-            updatedPageElements[id] = createElement(id, newX1, newY1, newX1 + width, newY1 + height, type);
+            updatedPageElements[id] = createElement(newX1, newY1, newX1 + width, newY1 + height, type);
             return { ...prevPageElements, [pageNumber]: updatedPageElements };
           });
         }
@@ -384,73 +392,63 @@ const PdfViewerWithDrawing: React.FC = () => {
     }
   };
 
-  function addNewlineAtWordEnd(input: string): string {
-    const words = input.split(' ');
-    const resultArray: string[] = [];
-
-    for (const word of words) {
-      if (word.endsWith("니다") || word.endsWith("냐") || word.endsWith("요") || word.endsWith("죠")) {
-        const modifiedWord = word + '\n';
-        resultArray.push(modifiedWord);
-      } else {
-        resultArray.push(word);
-      }
-    }
-
-    const result = resultArray.join(' ');
-    return result;
-  }
-
   const handleMouseUp = () => {
     setAction("none");
     setSelectedElement(null);
   };
 
-  const modifyTranscript = () => {
-    const modified = addNewlineAtWordEnd(transcript);
-    setModifiedLines(modified.split('\n'));
-  };
+  const [processedLines, setProcessedLines] = useState<string[]>([]);
+  const [currentY, setCurrentY] = useState<number>(150); // y 좌표 초기값
 
-  const startEditing = (index: number, text: string) => {
-    setEditingIndex(index);
-    setEditingText(text);
-  };
+  const addTextToCanvas = (text: string, y: number) => {
+    const x = 150; // x 좌표는 고정
 
-  const stopEditing = () => {
-    const updatedLines = modifiedLines.map((line, index) =>
-      index === editingIndex ? editingText : line
-    );
-    setModifiedLines(updatedLines);
-    setEditingIndex(null);
-  };
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditingText(e.target.value);
-  };
-
-  const addTextToCanvas = (text: string) => {
-    const x = 150;
-    const y = 150;
-
-    setTextElements(prevTextElements => {
+    setTextElements((prevTextElements) => {
       const currentPageTextElements = prevTextElements[pageNumber] || [];
       return { ...prevTextElements, [pageNumber]: [...currentPageTextElements, { x, y, text }] };
     });
+
+    setProcessedLines((prevLines) => [...prevLines, text]);
+    setCurrentY(y + 30); // 다음 텍스트의 y 좌표 증가
   };
 
+  function splitText(text: string) {
+    const regex = /(요|니다|죠|냐)/g;
+
+    let parts = text.split(regex);
+
+    let result = [];
+
+    for (let i = 0; i < parts.length; i += 2) {
+      let sentence = (parts[i] + (parts[i + 1] || '')).trim();
+      if (sentence !== '') {
+        result.push(sentence);
+      }
+    }
+
+    return result;
+  }
+
+  const [sentences, setSentences] = useState<string[]>([]);
+
   useEffect(() => {
-    modifyTranscript(); // 음성인식 결과를 처리
-    addTextToCanvas(transcript); // 새로운 텍스트를 캔버스에 추가
+    if (listening){
+      const newSentences = splitText(transcript);
+      setSentences(newSentences);
+    }
   }, [transcript]);
+
+  useEffect(() => {
+    if (sentences.length > 1) {
+      const secondLastSentence = sentences[sentences.length - 2];
+      addTextToCanvas(secondLastSentence, currentY);
+    }
+  }, [sentences.length]);
 
   const handleSpeechButtonClick = () => {
     toggleListening();
     if (!listening) {
-      // 음성인식 시작 시
       setModifiedLines([]);
-    } else {
-      // 음성인식 중지 시
-      modifyTranscript();
     }
   };
 
@@ -489,25 +487,6 @@ const PdfViewerWithDrawing: React.FC = () => {
         <button onClick={handleSpeechButtonClick}>
           {listening ? '음성인식 중지' : '음성인식 시작'}
         </button>
-        <div className="bubble-container">
-          {modifiedLines.map((line, index) => (
-            <Draggable key={index}>
-              <div className="bubble" onDoubleClick={() => startEditing(index, line)}>
-                {editingIndex === index ? (
-                  <input
-                    type="text"
-                    value={editingText}
-                    onChange={handleTextChange}
-                    onBlur={stopEditing}
-                    autoFocus
-                  />
-                ) : (
-                  <span>{line}</span>
-                )}
-              </div>
-            </Draggable>
-          ))}
-        </div>
       </div>
       <div ref={dropRef}>
         <canvas
