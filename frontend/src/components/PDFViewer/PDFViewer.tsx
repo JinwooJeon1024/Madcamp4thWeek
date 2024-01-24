@@ -4,10 +4,9 @@ import rough from 'roughjs';
 import UseSpeechToText from '../UseSpeechtoText';
 import { useDrop, DropTargetMonitor } from 'react-dnd';
 
+
 const pdfjs = require('pdfjs-dist');
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
-
-let elementId = 0;
 
 interface Element {
   id: number;
@@ -45,8 +44,7 @@ const ItemType = {
   TEXT: 'text',
 };
 
-function createElement( x1: number, y1: number, x2: number, y2: number, type: string, text?: string): Element | TextElement {
-  const id = elementId++;
+function createElement(id: number, x1: number, y1: number, x2: number, y2: number, type: string, text?: string): Element | TextElement {
   if (type === 'text' && text !== undefined) {
     // TextElement 객체를 반환
     return { id, x1, y1, x2, y2, type, text };
@@ -125,9 +123,8 @@ const PdfViewerWithDrawing: React.FC = () => {
   });
 
   const addTextElement = (text: string, x: number, y: number) => {
-    const id = elementId++;
-  const newTextElement = { id, x1: x, y1: y, x2: x + 100, y2: y + 20, type: 'text', text } as TextElement;
-
+    const id = Object.keys(pageElements).length;
+    const newTextElement: TextElement = createElement(id, x, y, x + 100, y + 20, 'text', text) as TextElement;
     setPageElements((prev) => ({
       ...prev,
       [pageNumber]: [...(prev[pageNumber] || []), newTextElement],
@@ -276,7 +273,6 @@ const PdfViewerWithDrawing: React.FC = () => {
       const y = clientY - rect.top;
       const element = getElementAtPosition(x, y, currentPageElements)
       const textElement = currentPageTextElements.find(te => isWithinTextElement(x, y, te, context));
-      const textElementId = currentPageTextElements.findIndex(te => te === textElement);
 
       if (tool === 'selection') {
         if (element) {
@@ -289,7 +285,7 @@ const PdfViewerWithDrawing: React.FC = () => {
           const offsetX = x - textElement.x;
           const offsetY = y - textElement.y;
           setSelectedElement({
-            id: textElementId,
+            id: -1, // TODO: change to uid
             x1: textElement.x, y1: textElement.y,
             x2: textElement.x + 100, y2: textElement.y + 20,
             type: 'text',
@@ -326,7 +322,8 @@ const PdfViewerWithDrawing: React.FC = () => {
         }
       }
       else {
-        const element = createElement(x, y, x, y, tool);
+        const id = currentPageElements.length;
+        const element = createElement(id, x, y, x, y, tool);
         setPageElements(prevPageElements => {
           return { ...prevPageElements, [pageNumber]: [...currentPageElements, element] }
         })
@@ -359,7 +356,7 @@ const PdfViewerWithDrawing: React.FC = () => {
       if (action === "drawing") {
         const index = currentPageElements.length - 1;
         const { x1, y1 } = currentPageElements[index];
-        const newElement = createElement(x1, y1, x, y, tool);
+        const newElement = createElement(index, x1, y1, x, y, tool);
 
         setPageElements(prevPageElements => {
           const updatedPageElements = [...(prevPageElements[pageNumber] || [])];
@@ -384,7 +381,7 @@ const PdfViewerWithDrawing: React.FC = () => {
 
           setPageElements(prevPageElements => {
             const updatedPageElements = [...(prevPageElements[pageNumber] || [])];
-            updatedPageElements[id] = createElement(newX1, newY1, newX1 + width, newY1 + height, type);
+            updatedPageElements[id] = createElement(id, newX1, newY1, newX1 + width, newY1 + height, type);
             return { ...prevPageElements, [pageNumber]: updatedPageElements };
           });
         }
