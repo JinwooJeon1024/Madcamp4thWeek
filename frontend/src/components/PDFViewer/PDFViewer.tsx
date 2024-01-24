@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 import rough from 'roughjs';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import UseSpeechToText from '../UseSpeechtoText';
+import { format } from 'path';
 
 const pdfjs = require('pdfjs-dist');
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
@@ -34,22 +37,10 @@ type SelectedElement = {
   text?: string;
 }
 
-interface DragItem {
-  type: string;
-  text: string;
-  index: number;
-}
-
-const ItemType = {
-  TEXT: 'text',
-};
-
 function createElement(id: number, x1: number, y1: number, x2: number, y2: number, type: string, text?: string): Element | TextElement {
   if (type === 'text' && text !== undefined) {
-    // TextElement 객체를 반환
     return { id, x1, y1, x2, y2, type, text };
   } else {
-    // 기존 도형(Element) 생성 로직
     const generator = rough.generator();
     const roughElement =
       type === 'line' ? generator.line(x1, y1, x2, y2) : generator.rectangle(x1, y1, x2 - x1, y2 - y1);
@@ -75,9 +66,9 @@ const isWithinElement = (x: number, y: number, element: Element) => {
 };
 
 const isWithinTextElement = (x: number, y: number, textElement: { x: number, y: number, text: string }, context: CanvasRenderingContext2D) => {
-  context.font = '16px Arial'; // drawOnCanvas에서 사용된 글꼴 스타일과 일치시키기
+  context.font = '16px Arial';
   const textWidth = context.measureText(textElement.text).width;
-  const textHeight = 20; // 텍스트 높이, 필요에 따라 조정
+  const textHeight = 20;
   return x >= textElement.x && x <= textElement.x + textWidth && y >= textElement.y - textHeight && y <= textElement.y;
 };
 
@@ -365,10 +356,10 @@ const PdfViewerWithDrawing: React.FC = () => {
   };
 
   const [processedLines, setProcessedLines] = useState<string[]>([]);
-  const [currentY, setCurrentY] = useState<number>(150); // y 좌표 초기값
+  const [currentY, setCurrentY] = useState<number>(150);
 
   const addTextToCanvas = (text: string, y: number) => {
-    const x = 150; // x 좌표는 고정
+    const x = 150;
 
     setTextElements((prevTextElements) => {
       const currentPageTextElements = prevTextElements[pageNumber] || [];
@@ -376,7 +367,7 @@ const PdfViewerWithDrawing: React.FC = () => {
     });
 
     setProcessedLines((prevLines) => [...prevLines, text]);
-    setCurrentY(y + 30); // 다음 텍스트의 y 좌표 증가
+    setCurrentY(y + 30);
   };
 
   function splitText(text: string) {
@@ -399,7 +390,7 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [sentences, setSentences] = useState<string[]>([]);
 
   useEffect(() => {
-    if (listening){
+    if (listening) {
       const newSentences = splitText(transcript);
       setSentences(newSentences);
     }
@@ -416,6 +407,75 @@ const PdfViewerWithDrawing: React.FC = () => {
     toggleListening();
     if (!listening) {
       setModifiedLines([]);
+    }
+  };
+  const convertToPdf = async () => {
+    const imgConst = new Image();
+    imgConst.src = pdfImages[numPages! - 1];
+    const pdf = new jsPDF('p', 'px', [imgConst.width, imgConst.height]);
+
+    try {
+      if (numPages) {
+        for (let i = 1; i <= numPages; i++) {
+          const currentPageElements = pageElements[i] || [];
+
+          // Create a new canvas for the current page
+          const combinedCanvas = document.createElement('canvas');
+          const combinedContext = combinedCanvas.getContext('2d');
+
+          if (combinedContext) {
+            const img = new Image();
+            img.src = pdfImages[i - 1];
+
+            // Wait for the image to load
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = () => reject(new Error(`Failed to load image: ${img.src}`));
+            });
+
+            // Set the canvas size to match the image size
+            combinedCanvas.width = img.width;
+            combinedCanvas.height = img.height;
+
+            // Draw the image on the combined canvas
+            combinedContext.drawImage(img, 0, 0);
+
+            // Iterate through elements and draw them on the combined canvas
+            currentPageElements.forEach(({ x1, y1, x2, y2, type, roughElement }) => {
+              if (type === 'line') {
+                combinedContext.beginPath();
+                combinedContext.moveTo(x1, y1);
+                combinedContext.lineTo(x2, y2);
+                combinedContext.stroke();
+              } else if (type === 'rectangle') {
+                combinedContext.strokeRect(x1, y1, x2 - x1, y2 - y1);
+              } else if (type === 'html') {
+                // Use html2canvas to render HTML element on the canvas
+                html2canvas(roughElement.firstChild).then(canvas => {
+                  combinedContext.drawImage(canvas, x1, y1);
+                });
+              }
+            });
+
+            // Convert the combined canvas to an image
+            const imgData = combinedCanvas.toDataURL('image/png');
+
+            // Add the image to the PDF
+            pdf.addImage(imgData, 'PNG', 0, 0, img.width, img.height);
+
+            // Add a new page if not the last page
+            if (i < numPages) {
+              pdf.addPage();
+            }
+          }
+        }
+      }
+
+      // Save the PDF
+      pdf.save('converted.pdf');
+    } catch (error) {
+      console.error('Error converting to PDF:', error);
+      // Handle the error as needed
     }
   };
 
@@ -470,6 +530,9 @@ const PdfViewerWithDrawing: React.FC = () => {
         </button>
         <button onClick={goToNextPage} disabled={pageNumber === numPages}>
           Next Page
+        </button>
+        <button onClick={convertToPdf}>
+          Convert to Pdf
         </button>
       </div>
     </div>
