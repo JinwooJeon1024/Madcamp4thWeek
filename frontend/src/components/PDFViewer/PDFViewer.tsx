@@ -281,7 +281,7 @@ const PdfViewerWithDrawing: React.FC = () => {
           setAction('none');
           setSelectedElement(null);
         }
-      }
+      } 
       else {
         const id = elementId++;
         const element = createElement(id, x, y, x, y, tool);
@@ -515,6 +515,20 @@ const PdfViewerWithDrawing: React.FC = () => {
           onChange={() => setTool('delete')}
         />
         <label htmlFor="delete">Delete</label>
+        <input
+          type="radio"
+          id="text"
+          checked={tool === 'text'}
+          onChange={() => setTool('text')}
+        />
+        <label htmlFor="delete">Text</label>
+        <input
+          type="radio"
+          id="edit"
+          checked={tool === 'edit'}
+          onChange={() => setTool('edit')}
+        />
+        <label htmlFor="edit">Edit</label>
         <button onClick={handleSpeechButtonClick}>
           {listening ? '음성인식 중지' : '음성인식 시작'}
         </button>
