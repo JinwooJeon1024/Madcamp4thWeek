@@ -23,14 +23,6 @@
 
 ## 주요 기능
 #### 음성 인식
-<p align="center">
- <img width="40%" alt="edit에서 위젯 추가" src="https://github.com/JinwooJeon1024/Madcamp3rdWeek/assets/76899099/64806633-7a09-45dd-a1a7-2d59b0e66a04" style="margin-right:30px">
- <img width="40%" alt="편집 저장" src="https://github.com/JinwooJeon1024/Madcamp3rdWeek/assets/76899099/0f00810e-dd14-4885-9692-302c6d76347d">
-</p>
-<p align="center">
- <img width="40%" alt="위젯 이동" src="https://github.com/JinwooJeon1024/Madcamp3rdWeek/assets/76899099/26b5514b-478b-44a2-8e58-192c64adf79d" style="margin-right:30px">
- <img width="40%" alt="edit 메뉴바 이동 " src="https://github.com/JinwooJeon1024/Madcamp3rdWeek/assets/76899099/fdf5204c-d35f-4b22-b70d-62b9cfe5855d">
-</p>
 
 # Major Features
 
