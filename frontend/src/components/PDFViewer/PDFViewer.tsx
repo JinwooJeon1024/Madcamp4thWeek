@@ -299,21 +299,24 @@ const PdfViewerWithDrawing: React.FC = () => {
         } else {
           setEditableTextElement(null);
         }
-      } else if (tool === 'translate' && textElement) {
-        try {
-          const translatedText = await translateText(textElement.text);
-          setTextElements(prev => {
-            const updatedTextElements = currentPageTextElements.map(te => {
-              if (te === textElement) {
-                return { ...te, text: translatedText };
-              }
-              return te;
+      } else if (tool === 'translate') {
+        if (textElement) {
+          try {
+            const translatedText = await translateText(textElement.text);
+            setTextElements(prev => {
+              const updatedTextElements = currentPageTextElements.map(te => {
+                if (te === textElement) {
+                  return { ...te, text: translatedText };
+                }
+                return te;
+              });
+              return { ...prev, [pageNumber]: updatedTextElements };
             });
-            return { ...prev, [pageNumber]: updatedTextElements };
-          });
-        } catch (error) {
-          console.error('Error translating text:', error);
+          } catch (error) {
+            console.error('Error translating text:', error);
+          }
         }
+        return;
       }
       else {
         const id = elementId++;
@@ -478,6 +481,7 @@ const PdfViewerWithDrawing: React.FC = () => {
   useEffect(() => {
     if (sentences.length > 1) {
       const secondLastSentence = sentences[sentences.length - 2];
+      console.log(sentences);
       addTextToCanvas(secondLastSentence, currentY);
     }
   }, [sentences.length]);
@@ -542,7 +546,6 @@ const PdfViewerWithDrawing: React.FC = () => {
               combinedContext.fillText(text, x, y);
             });
 
-            // Convert the combined canvas to an image
             const imgData = combinedCanvas.toDataURL('image/png');
 
             // Add the image to the PDF
