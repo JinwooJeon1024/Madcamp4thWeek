@@ -3,7 +3,6 @@ import UseSpeechToText from './components/UseSpeechtoText';
 import './styles/Bubble.css';
 import Draggable from 'react-draggable';
 import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import PdfViewer from './components/PDFViewer/PDFViewer';
 
 const App: React.FC = () => {
@@ -60,9 +59,7 @@ const App: React.FC = () => {
           </Draggable>
         ))}
       </div>
-      <DndProvider backend={HTML5Backend}>
-        <PdfViewer />
-      </DndProvider>
+      <PdfViewer />
     </div>
   );
 };

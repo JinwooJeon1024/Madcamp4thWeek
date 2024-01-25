@@ -92,8 +92,8 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [roughCanvases, setRoughCanvases] = useState<any[]>([]); // Array to hold RoughJS canvases for each page
   const [modifiedLines, setModifiedLines] = useState<string[]>([]);
   const [textElements, setTextElements] = useState<{ [pageNum: number]: { x: number, y: number, text: string }[] }>({});
-
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [editableTextElement, setEditableTextElement] = useState<TextElement | null>(null);
 
   useEffect(() => {
     if (pdfFile) {
@@ -281,7 +281,23 @@ const PdfViewerWithDrawing: React.FC = () => {
           setAction('none');
           setSelectedElement(null);
         }
-      } 
+      } else if (tool === 'edit') {
+        const textElement = currentPageTextElements.find(te => isWithinTextElement(x, y, te, context));
+        if (textElement) {
+          const editableElement: TextElement = {
+            id: elementId++,
+            x1: textElement.x,
+            y1: textElement.y,
+            x2: textElement.x + 100,
+            y2: textElement.y + 20,
+            type: 'text',
+            text: textElement.text
+          };
+          setEditableTextElement(editableElement);
+        } else {
+          setEditableTextElement(null);
+        }
+      }
       else {
         const id = elementId++;
         const element = createElement(id, x, y, x, y, tool);
@@ -355,6 +371,34 @@ const PdfViewerWithDrawing: React.FC = () => {
     setSelectedElement(null);
   };
 
+  const renderEditableTextField = () => {
+    if (editableTextElement) {
+      return (
+        <input
+          type="text"
+          value={editableTextElement.text}
+          style={{ position: 'absolute', left: editableTextElement.x1, top: editableTextElement.y1 }}
+          onChange={(e) => {
+            const updatedText = e.target.value;
+            if (editableTextElement) { 
+              setEditableTextElement({ ...editableTextElement, text: updatedText });
+            }
+            setTextElements(prev => {
+              const currentPageTextElements = prev[pageNumber] || [];
+              const updatedTextElements = currentPageTextElements.map(te => {
+                if (te.x === editableTextElement.x1 && te.y === editableTextElement.y1) {
+                  return { ...te, text: updatedText };
+                }
+                return te;
+              });
+              return { ...prev, [pageNumber]: updatedTextElements };
+            });
+          }}
+        />
+      );
+    }
+    return null;
+  };
   const [processedLines, setProcessedLines] = useState<string[]>([]);
   const [currentY, setCurrentY] = useState<number>(150);
 
@@ -407,6 +451,8 @@ const PdfViewerWithDrawing: React.FC = () => {
     toggleListening();
     if (!listening) {
       setModifiedLines([]);
+    } else {
+      addTextToCanvas(sentences[sentences.length - 1], currentY);
     }
   };
   const convertToPdf = async () => {
@@ -485,6 +531,7 @@ const PdfViewerWithDrawing: React.FC = () => {
 
   return (
     <div>
+      {renderEditableTextField()}
       <input type="file" onChange={onFileChange} />
       <div>
         <input
