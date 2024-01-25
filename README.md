@@ -1,6 +1,7 @@
 # Noted
 
-<img src="https://github.com/JinwooJeon1024/Madcamp3rdWeek/assets/76899099/8ce11897-5bf2-4436-a201-87e0bcce84e5" width="30%"/>
+![스크린샷 2024-01-25 203412](https://github.com/JinwooJeon1024/Madcamp4thWeek/assets/104386015/9a9c12f5-2200-44e3-97a0-11dcce9768a6)
+
 
 
 
