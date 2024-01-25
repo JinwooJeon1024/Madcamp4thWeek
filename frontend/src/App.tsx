@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import UseSpeechToText from './components/UseSpeechtoText';
 import './styles/Bubble.css';
 import Draggable from 'react-draggable';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import "./App.css";
+
 import PdfViewer from './components/PDFViewer/PDFViewer';
 
 const App: React.FC = () => {
@@ -35,34 +35,20 @@ const App: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1>Web Speech API</h1>
-      <textarea className="transcript" value={transcript} onChange={() => { }} />
-      <button onClick={() => { toggleListening(); modifyTranscript(); }}>
-        {listening ? '음성인식 중지' : '음성인식 시작'}
-      </button>
-      <div className="bubble-container">
-        {modifiedLines.map((line, index) => (
-          <Draggable key={index}>
-            <div className="bubble" onDoubleClick={() => startEditing(index, line)}>
-              {editingIndex === index ? (
-                <input
-                  type="text"
-                  value={editingText}
-                  onChange={handleTextChange}
-                  onBlur={stopEditing}
-                  autoFocus
-                />
-              ) : (
-                <span>{line}</span>
-              )}
-            </div>
-          </Draggable>
-        ))}
-      </div>
-      <DndProvider backend={HTML5Backend}>
-        <PdfViewer />
-      </DndProvider>
+    <div className='main-page'>
+        <div className='overlap-group'>
+          <textarea className="rectangle1" value={transcript} onChange={() => { }} />
+          <div onClick={() => { toggleListening(); modifyTranscript(); }}>
+            <span>{listening 
+            ? <img className="zondicons-mic" src={process.env.PUBLIC_URL+"/mic-on.png"}  />
+            : <img className="zondicons-mic" src={process.env.PUBLIC_URL+"/mic-off.png"}  />
+            }
+            </span>
+          </div>
+          <div className="div1">
+            <PdfViewer />
+          </div>
+        </div>
     </div>
   );
 };

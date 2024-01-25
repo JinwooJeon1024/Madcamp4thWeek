@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import App from '../App';
@@ -9,10 +9,14 @@ import { motion } from "framer-motion";
 export const LandingPage = (): JSX.Element => {
 
     const navigate = useNavigate();
+    const [animationComplete, setAnimationComplete] = useState(false);
 
     const goToMain = () => {
-      navigate('App');
-    };
+        setAnimationComplete(true);
+        setTimeout(() => {
+          navigate('App');
+        }, 2000); // Adjust the delay based on your animation duration
+      };
 
   return (
 
@@ -20,12 +24,15 @@ export const LandingPage = (): JSX.Element => {
         <div className="rectangle" />
         <img className="vector" src={process.env.PUBLIC_URL+"/vector-2.svg"} />
         <img className="element-file" src={process.env.PUBLIC_URL+"/Group1.png"}/>
-        <img className="screen-in" src={process.env.PUBLIC_URL+"/MainPage.png"}/>
+        <motion.img
+            className={`screen-in ${animationComplete ? "animate" : ""}`}
+            src={process.env.PUBLIC_URL + "/MainPage.png"}
+        />   
         <motion.div
             className="assistant"
-            animate={{ scale: [0.9, 1.2, 1] }}
-            transition={{ duration: 4, times: [0, 0.2, 1] }}
-        >ASSISTANT
+            animate={{ scale: [1, 1.2, 1.1] }}
+            transition={{ duration: 4, times: [0, 0.5, 1] }}
+        >NOTED
         </motion.div>
         <motion.button className="cta" onClick={goToMain} whileHover = {{ scale: 1.1 }} whileTap={{scale: 0.9}} transition={{type: "spring", stiffness: 400, damping: 17}}>
           <div className="try-now">TRY NOW</div>
