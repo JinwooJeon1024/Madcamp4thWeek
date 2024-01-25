@@ -492,8 +492,8 @@ const PdfViewerWithDrawing: React.FC = () => {
   };
   const convertToPdf = async () => {
     const imgConst = new Image();
-    imgConst.src = pdfImages[numPages! - 1];
-    const pdf = new jsPDF('p', 'px', [imgConst.width, imgConst.height]);
+    imgConst.src = pdfImages[2];
+    const pdf = new jsPDF('l', 'pc', [imgConst.height, imgConst.width]);
 
     try {
       if (numPages) {
