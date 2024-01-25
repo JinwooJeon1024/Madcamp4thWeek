@@ -4,7 +4,7 @@ import rough from 'roughjs';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import UseSpeechToText from '../UseSpeechtoText';
-import { format } from 'path';
+import axios from 'axios';
 
 const pdfjs = require('pdfjs-dist');
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
@@ -80,7 +80,8 @@ const getElementAtPosition = (x: number, y: number, elements: Element[]) => {
 
 
 const PdfViewerWithDrawing: React.FC = () => {
-  const { transcript, listening, toggleListening } = UseSpeechToText();
+  const [language, setLanguage] = useState<string>('en-US');
+  const { transcript, listening, toggleListening } = UseSpeechToText(language);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [numPages, setNumPages] = useState<number | null>(null);
@@ -92,8 +93,8 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [roughCanvases, setRoughCanvases] = useState<any[]>([]); // Array to hold RoughJS canvases for each page
   const [modifiedLines, setModifiedLines] = useState<string[]>([]);
   const [textElements, setTextElements] = useState<{ [pageNum: number]: { x: number, y: number, text: string }[] }>({});
-
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [editableTextElement, setEditableTextElement] = useState<TextElement | null>(null);
 
   useEffect(() => {
     if (pdfFile) {
@@ -222,7 +223,7 @@ const PdfViewerWithDrawing: React.FC = () => {
     setPageNumber((prevPageNumber) => (numPages ? Math.min(prevPageNumber + 1, numPages) : prevPageNumber));
   };
 
-  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseDown = async (event: React.MouseEvent<HTMLCanvasElement>) => {
     const { clientX, clientY } = event.nativeEvent;
     const rect = imageCanvasRef.current?.getBoundingClientRect();
     const currentPageElements = pageElements[pageNumber] || [];
@@ -247,7 +248,8 @@ const PdfViewerWithDrawing: React.FC = () => {
           const offsetY = y - textElement.y;
           setSelectedElement({
             id: elementId++,
-            x1: textElement.x, y1: textElement.y,
+            x1: textElement.x,
+            y1: textElement.y,
             x2: textElement.x + 100, y2: textElement.y + 20,
             type: 'text',
             text: textElement.text,
@@ -281,7 +283,38 @@ const PdfViewerWithDrawing: React.FC = () => {
           setAction('none');
           setSelectedElement(null);
         }
-      } 
+      } else if (tool === 'edit') {
+        const textElement = currentPageTextElements.find(te => isWithinTextElement(x, y, te, context));
+        if (textElement) {
+          const editableElement: TextElement = {
+            id: elementId++,
+            x1: textElement.x,
+            y1: textElement.y,
+            x2: textElement.x + 100,
+            y2: textElement.y + 20,
+            type: 'text',
+            text: textElement.text
+          };
+          setEditableTextElement(editableElement);
+        } else {
+          setEditableTextElement(null);
+        }
+      } else if (tool === 'translate' && textElement) {
+        try {
+          const translatedText = await translateText(textElement.text);
+          setTextElements(prev => {
+            const updatedTextElements = currentPageTextElements.map(te => {
+              if (te === textElement) {
+                return { ...te, text: translatedText };
+              }
+              return te;
+            });
+            return { ...prev, [pageNumber]: updatedTextElements };
+          });
+        } catch (error) {
+          console.error('Error translating text:', error);
+        }
+      }
       else {
         const id = elementId++;
         const element = createElement(id, x, y, x, y, tool);
@@ -355,6 +388,42 @@ const PdfViewerWithDrawing: React.FC = () => {
     setSelectedElement(null);
   };
 
+  const renderEditableTextField = () => {
+    if (editableTextElement) {
+      const inputFieldHeight = 20;
+
+      return (
+        <input
+          type="text"
+          value={editableTextElement.text}
+          style={{
+            position: 'absolute',
+            left: `${editableTextElement.x1}px`,
+            top: `${editableTextElement.y1}px`,
+            height: `${inputFieldHeight}px`
+          }}
+          onChange={(e) => {
+            const updatedText = e.target.value;
+            if (editableTextElement) {
+              setEditableTextElement({ ...editableTextElement, text: updatedText });
+            }
+            setTextElements(prev => {
+              const currentPageTextElements = prev[pageNumber] || [];
+              const updatedTextElements = currentPageTextElements.map(te => {
+                if (te.x === editableTextElement.x1 && te.y === editableTextElement.y1) {
+                  return { ...te, text: updatedText };
+                }
+                return te;
+              });
+              return { ...prev, [pageNumber]: updatedTextElements };
+            });
+          }}
+        />
+      );
+    }
+    return null;
+  };
+
   const [processedLines, setProcessedLines] = useState<string[]>([]);
   const [currentY, setCurrentY] = useState<number>(150);
 
@@ -386,15 +455,25 @@ const PdfViewerWithDrawing: React.FC = () => {
 
     return result;
   }
+  const splitEnglishText = (text: string) => {
+    const words = text.split(' ');
+    let sentences = [];
+    for (let i = 0; i < words.length; i += 10) {
+      sentences.push(words.slice(i, i + 10).join(' '));
+    }
+    return sentences;
+  };
 
   const [sentences, setSentences] = useState<string[]>([]);
 
   useEffect(() => {
     if (listening) {
-      const newSentences = splitText(transcript);
+      const newSentences = language === 'en-US' ?
+        splitEnglishText(transcript) :
+        splitText(transcript);
       setSentences(newSentences);
     }
-  }, [transcript]);
+  }, [transcript, listening, language]);
 
   useEffect(() => {
     if (sentences.length > 1) {
@@ -407,6 +486,8 @@ const PdfViewerWithDrawing: React.FC = () => {
     toggleListening();
     if (!listening) {
       setModifiedLines([]);
+    } else {
+      addTextToCanvas(sentences[sentences.length - 1], currentY);
     }
   };
   const convertToPdf = async () => {
@@ -475,18 +556,53 @@ const PdfViewerWithDrawing: React.FC = () => {
         }
       }
 
-      // Save the PDF
       pdf.save('converted.pdf');
     } catch (error) {
       console.error('Error converting to PDF:', error);
-      // Handle the error as needed
+    }
+  };
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLanguage(e.target.value);
+  };
+
+  const translateText = async (text: string): Promise<string> => {
+    try {
+      const response = await axios.post('http://localhost:5000/translate', { text });
+      return response.data.translatedText;
+    } catch (error) {
+      console.error('Error during translation request:', error);
+      return '';
     }
   };
 
   return (
     <div>
+      {renderEditableTextField()}
       <input type="file" onChange={onFileChange} />
       <div>
+        <div>
+          <label>
+            <input
+              type="radio"
+              value="en-US"
+              checked={language === 'en-US'}
+              onChange={handleLanguageChange}
+            />
+            English
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="ko-KR"
+              checked={language === 'ko-KR'}
+              onChange={handleLanguageChange}
+            />
+            한국어
+          </label>
+        </div>
+        <button onClick={handleSpeechButtonClick}>
+          {listening ? '음성인식 중지' : '음성인식 시작'}
+        </button>
         <input
           type="radio"
           id="selection"
@@ -517,21 +633,18 @@ const PdfViewerWithDrawing: React.FC = () => {
         <label htmlFor="delete">Delete</label>
         <input
           type="radio"
-          id="text"
-          checked={tool === 'text'}
-          onChange={() => setTool('text')}
-        />
-        <label htmlFor="delete">Text</label>
-        <input
-          type="radio"
           id="edit"
           checked={tool === 'edit'}
           onChange={() => setTool('edit')}
         />
         <label htmlFor="edit">Edit</label>
-        <button onClick={handleSpeechButtonClick}>
-          {listening ? '음성인식 중지' : '음성인식 시작'}
-        </button>
+        <input
+          type="radio"
+          id="translate"
+          checked={tool === 'translate'}
+          onChange={() => setTool('translate')}
+        />
+        <label htmlFor="translate">Translate</label>
       </div>
       <div>
         <canvas
