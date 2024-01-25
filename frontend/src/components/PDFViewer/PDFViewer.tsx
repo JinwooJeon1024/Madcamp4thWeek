@@ -5,6 +5,8 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import UseSpeechToText from '../UseSpeechtoText';
 import axios from 'axios';
+import "./PDFViewer.css";
+import { motion } from "framer-motion";
 
 const pdfjs = require('pdfjs-dist');
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
@@ -95,6 +97,13 @@ const PdfViewerWithDrawing: React.FC = () => {
   const [textElements, setTextElements] = useState<{ [pageNum: number]: { x: number, y: number, text: string }[] }>({});
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
   const [editableTextElement, setEditableTextElement] = useState<TextElement | null>(null);
+  const [buttonClicked, setButtonClicked] = useState(false);
+
+
+  const handleUploadButtonClick = () => {
+    // 버튼 클릭 시 처리할 로직 추가
+    setButtonClicked(false);
+  };
 
   useEffect(() => {
     if (pdfFile) {
@@ -579,98 +588,55 @@ const PdfViewerWithDrawing: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="box">
       {renderEditableTextField()}
-      <input type="file" onChange={onFileChange} />
-      <div>
-        <div>
-          <label>
-            <input
-              type="radio"
-              value="en-US"
-              checked={language === 'en-US'}
-              onChange={handleLanguageChange}
-            />
-            English
-          </label>
-          <label>
-            <input
-              type="radio"
-              value="ko-KR"
-              checked={language === 'ko-KR'}
-              onChange={handleLanguageChange}
-            />
-            한국어
-          </label>
+      <div className="grouppdf">
+            <div className='overlap-grouppdf'>
+            <div className='divpdf'>
+              <div className='overlap-group-2pdf'>
+                <canvas
+                  ref={imageCanvasRef}
+                  className="image-canvas"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                />
+              {!pdfFile && (
+                <motion.label className='ctapdf' htmlFor='input-file' whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+                  Upload
+                </motion.label>
+              )}
+                <input id='input-file' type="file" onChange={onFileChange} style={{display:"none"}}/>
+              </div>
+              <div className="mingcute-left-fillpdf" onClick={goToPrevPage}>
+                <img src={process.env.PUBLIC_URL+"/mingcute_left-fill.svg"}/>
+              </div>
+              <div className="mingcute-right-fill-2pdf" onClick={goToNextPage}>
+                <img src={process.env.PUBLIC_URL+"/mingcute_right-fill.svg"}/>
+              </div>
+              <motion.button className='ctapdf2' onClick={convertToPdf} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+                Save
+              </motion.button>
+              <div className='frame-2pdf'>
+                <label><input type="checkbox" value="en-US" checked={language === 'en-US'} onChange={handleLanguageChange}/>English</label>
+                <label><input type="checkbox" value="ko-KR" checked={language === 'ko-KR'} onChange={handleLanguageChange}/>한국어</label>
+              </div>
+              </div>
+            </div>
+        <div className="overlappdf">
+          <div className='framepdf'>
+            <label><input type="checkbox" className = "element" id="selection" checked={tool === 'selection'} onChange={() => setTool('selection')}/><img src={process.env.PUBLIC_URL+"/mingcute_move-line.svg"}/></label>
+            <label><input type="checkbox" className = "element" id="line" checked={tool === 'line'} onChange={() => setTool('line')}/><img src={process.env.PUBLIC_URL+"/tabler_line.svg"}/></label>
+            <label><input type="checkbox" className = "element" id="rectangle" checked={tool === 'rectangle'} onChange={() => setTool('rectangle')}/><img src={process.env.PUBLIC_URL+"/gis_rectangle-pt.svg"}/></label>
+            <label><input type="checkbox" className = "element" id="delete" checked={tool === 'delete'} onChange={() => setTool('delete')}/><img src={process.env.PUBLIC_URL+"/lucide_delete.svg"}/></label>
+            <label><input type="checkbox" className = "element" id="edit" checked={tool === 'edit'} onChange={() => setTool('edit')}/><img src={process.env.PUBLIC_URL+"/lucide_pencil-line.svg"}/></label>
+            <label><input type="checkbox" className = "element" id="translate" checked={tool === 'translate'} onChange={() => setTool('translate')}/><img src={process.env.PUBLIC_URL+"/material-symbols_language-korean-latin-rounded.svg"}/></label>
+          </div>
         </div>
-        <button onClick={handleSpeechButtonClick}>
-          {listening ? '음성인식 중지' : '음성인식 시작'}
-        </button>
-        <input
-          type="radio"
-          id="selection"
-          checked={tool === 'selection'}
-          onChange={() => setTool('selection')}
-        />
-        <label htmlFor="selection">Selection</label>
-        <input
-          type="radio"
-          id="line"
-          checked={tool === 'line'}
-          onChange={() => setTool('line')}
-        />
-        <label htmlFor="line">Line</label>
-        <input
-          type="radio"
-          id="rectangle"
-          checked={tool === 'rectangle'}
-          onChange={() => setTool('rectangle')}
-        />
-        <label htmlFor="rectangle">Rectangle</label>
-        <input
-          type="radio"
-          id="delete"
-          checked={tool === 'delete'}
-          onChange={() => setTool('delete')}
-        />
-        <label htmlFor="delete">Delete</label>
-        <input
-          type="radio"
-          id="edit"
-          checked={tool === 'edit'}
-          onChange={() => setTool('edit')}
-        />
-        <label htmlFor="edit">Edit</label>
-        <input
-          type="radio"
-          id="translate"
-          checked={tool === 'translate'}
-          onChange={() => setTool('translate')}
-        />
-        <label htmlFor="translate">Translate</label>
-      </div>
-      <div>
-        <canvas
-          ref={imageCanvasRef}
-          className="image-canvas"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-        />
-      </div>
-      <div>
-        <button onClick={goToPrevPage} disabled={pageNumber === 1}>
-          Previous Page
-        </button>
-        <button onClick={goToNextPage} disabled={pageNumber === numPages}>
-          Next Page
-        </button>
-        <button onClick={convertToPdf}>
-          Convert to Pdf
-        </button>
       </div>
     </div>
   );
+  
 };
 
 export default PdfViewerWithDrawing;

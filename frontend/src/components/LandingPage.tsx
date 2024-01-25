@@ -41,7 +41,7 @@ export const LandingPage = (): JSX.Element => {
         <p className="div">
           하나로 충분하도록,
           <br />
-          당신의 완벽한 수업시간을 위한 조력자
+          당신의 완벽한 수업시간을 위한 
         </p>
       </div>
 

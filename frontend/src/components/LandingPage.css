@@ -84,9 +84,13 @@
     width: fit-content;
   }
   
+  @font-face{
+    font-family: "Korean";
+    src: url("../font/AppleSDGothicNeoB.ttf");
+  }
   .overlap-group .text-wrapper {
     color: #ffffff;
-    font-family: "Noto Sans Tamil-Regular", Helvetica;
+    font-family: "Korean";
     font-size: 23px;
     font-weight: 400;
     left: 13%;
@@ -99,7 +103,7 @@
   
   .overlap-group .div {
     color: #ffffff;
-    font-family: "Noto Sans Tamil-Bold", Helvetica;
+    font-family: "Korean";
     font-size: 32.3px;
     font-weight: 700;
     left: 13%;
