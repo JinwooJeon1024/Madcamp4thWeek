@@ -2,36 +2,16 @@ import React, { useState } from 'react';
 import UseSpeechToText from './components/UseSpeechtoText';
 import './styles/Bubble.css';
 import "./App.css";
-
 import PdfViewer from './components/PDFViewer/PDFViewer';
 
 const App: React.FC = () => {
   const [language, setLanguage] = useState<string>('en-US');
   const { transcript, listening, toggleListening } = UseSpeechToText(language);
   const [modifiedLines, setModifiedLines] = useState<string[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingText, setEditingText] = useState<string>('');
 
   const modifyTranscript = () => {
     const modified = addNewlineAtWordEnd(transcript);
     setModifiedLines(modified.split('\n'));
-  };
-
-  const startEditing = (index: number, text: string) => {
-    setEditingIndex(index);
-    setEditingText(text);
-  };
-
-  const stopEditing = () => {
-    const updatedLines = modifiedLines.map((line, index) =>
-      index === editingIndex ? editingText : line
-    );
-    setModifiedLines(updatedLines);
-    setEditingIndex(null);
-  };
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditingText(e.target.value);
   };
 
   return (
