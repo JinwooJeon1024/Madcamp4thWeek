@@ -503,76 +503,69 @@ const PdfViewerWithDrawing: React.FC = () => {
       addTextToCanvas(sentences[sentences.length - 1], currentY);
     }
   };
+
   const convertToPdf = async () => {
-    const imgConst = new Image();
-    imgConst.src = pdfImages[2];
-    const pdf = new jsPDF('l', 'pc', [imgConst.height, imgConst.width]);
+    if (numPages) {
+      // 첫 번째 이미지를 기준으로 PDF 페이지 크기를 설정합니다.
+      const imgConst = new Image();
+      imgConst.src = pdfImages[0];
+      await new Promise<void>((resolve, reject) => {
+        imgConst.onload = () => resolve();
+        imgConst.onerror = reject;
+      });
+      const pdf = new jsPDF('l', 'pc', [imgConst.width, imgConst.height]);
 
-    try {
-      if (numPages) {
-        for (let i = 1; i <= numPages; i++) {
-          const currentPageElements = pageElements[i] || [];
-          const currentPageTextElements = textElements[i] || [];
+      for (let i = 1; i <= numPages; i++) {
+        const currentPageElements = pageElements[i] || [];
+        const currentPageTextElements = textElements[i] || [];
 
-          // Create a new canvas for the current page
-          const combinedCanvas = document.createElement('canvas');
-          const combinedContext = combinedCanvas.getContext('2d');
+        const combinedCanvas = document.createElement('canvas');
+        const combinedContext = combinedCanvas.getContext('2d');
 
-          if (combinedContext) {
-            const img = new Image();
-            img.src = pdfImages[i - 1];
+        if (combinedContext) {
+          const img = new Image();
+          img.src = pdfImages[i - 1];
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+          });
 
-            // Wait for the image to load
-            await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = () => reject(new Error(`Failed to load image: ${img.src}`));
-            });
+          combinedCanvas.width = img.width;
+          combinedCanvas.height = img.height;
+          combinedContext.drawImage(img, 0, 0);
 
-            // Set the canvas size to match the image size
-            combinedCanvas.width = img.width;
-            combinedCanvas.height = img.height;
-
-            // Draw the image on the combined canvas
-            combinedContext.drawImage(img, 0, 0);
-
-            // Iterate through elements and draw them on the combined canvas
-            currentPageElements.forEach(({ x1, y1, x2, y2, type, roughElement }) => {
-              if (type === 'line') {
-                combinedContext.beginPath();
-                combinedContext.moveTo(x1, y1);
-                combinedContext.lineTo(x2, y2);
-                combinedContext.stroke();
-              } else if (type === 'rectangle') {
-                combinedContext.strokeRect(x1, y1, x2 - x1, y2 - y1);
-              } else if (type === 'html') {
-                // Use html2canvas to render HTML element on the canvas
-                html2canvas(roughElement.firstChild).then(canvas => {
-                  combinedContext.drawImage(canvas, x1, y1);
-                });
-              }
-            });
-            currentPageTextElements.forEach(({ x, y, text }) => {
-              combinedContext.fillText(text, x, y);
-            });
-
-            const imgData = combinedCanvas.toDataURL('image/png');
-
-            // Add the image to the PDF
-            pdf.addImage(imgData, 'PNG', 0, 0, img.width, img.height);
-
-            // Add a new page if not the last page
-            if (i < numPages) {
-              pdf.addPage();
+          currentPageElements.forEach(async ({ x1, y1, x2, y2, type, roughElement }) => {
+            if (type === 'line') {
+              combinedContext.beginPath();
+              combinedContext.moveTo(x1, y1);
+              combinedContext.lineTo(x2, y2);
+              combinedContext.stroke();
+            } else if (type === 'rectangle') {
+              combinedContext.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            } else if (type === 'html') {
+              await html2canvas(roughElement.firstChild).then(canvas => {
+                combinedContext.drawImage(canvas, x1, y1);
+              });
             }
+          });
+
+          currentPageTextElements.forEach(({ x, y, text }) => {
+            combinedContext.fillText(text, x, y);
+          });
+
+          const imgData = combinedCanvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', 0, 0, img.width, img.height);
+
+          if (i < numPages) {
+            pdf.addPage();
           }
         }
       }
 
       pdf.save('converted.pdf');
-    } catch (error) {
-      console.error('Error converting to PDF:', error);
     }
   };
+
   const handleLanguageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLanguage(e.target.value);
   };
