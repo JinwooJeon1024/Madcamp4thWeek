@@ -1,8 +1,8 @@
 # Noted
 
-![스크린샷 2024-01-25 203412](https://github.com/JinwooJeon1024/Madcamp4thWeek/assets/104386015/9a9c12f5-2200-44e3-97a0-11dcce9768a6)
+<img width="1069" alt="image" src="https://github.com/JinwooJeon1024/Madcamp4thWeek/assets/149778119/181fa1a4-349c-45a2-94d8-6467a6dba881">
 
-
+<img width="1059" alt="image" src="https://github.com/JinwooJeon1024/Madcamp4thWeek/assets/149778119/54f6adab-76f0-498e-bc12-a8040a35d45e">
 
 
 ## 프로젝트 소개
